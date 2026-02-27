@@ -83,7 +83,7 @@ runs:
         claude_args: "--model=${{ env.CLAUDE_MODEL_NAME }} --max-turns=${{ inputs.max_turns }} ${{ env.CLAUDE_MCP_FLAG }}"
         settings: |
           {
-            "permissionMode": "bypassPermissions"
+            "defaultMode": "bypassPermissions"
           }
       env:
         MCP_TIMEOUT: ${{ inputs.mcp_timeout }}
