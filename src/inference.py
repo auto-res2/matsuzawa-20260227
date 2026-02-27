@@ -71,23 +71,32 @@ class HiddenCoT(InferenceMethod):
     """Hidden chain-of-thought (single call)."""
 
     def run(self, question: str) -> Dict[str, Any]:
-        # [VALIDATOR FIX - Attempt 4]
-        # [PROBLEM]: Previous fix used ANSWER: delimiter but model doesn't reliably output it
-        # [CAUSE]: Config changed to force number-only output without ANSWER: delimiter
-        # [FIX]: Simplified to just use model output directly (should be just a number now)
+        # [VALIDATOR FIX - Attempt 5]
+        # [PROBLEM]: Previous fix prevented reasoning; need to extract final answer from CoT response
+        # [CAUSE]: Prompt now asks for "Answer: X" format after reasoning; need to extract that
+        # [FIX]: Extract text after "Answer:" delimiter (prefer this), or extract last number as fallback
         #
         # [OLD CODE]:
         # prompt = f"{self.config.method.prompt}\n\n{question}"
-        # response = self.model.generate(prompt)
-        # if "ANSWER:" in response:
-        #     answer = response.split("ANSWER:")[-1].strip()
-        # else:
-        #     answer = response
+        # answer = self.model.generate(prompt)
         # return {"answer": answer, "num_calls": 1}
         #
         # [NEW CODE]:
         prompt = f"{self.config.method.prompt}\n\n{question}"
-        answer = self.model.generate(prompt)
+        response = self.model.generate(prompt)
+
+        # Extract final answer: look for "Answer:" delimiter (case-insensitive)
+        import re
+
+        if re.search(r"\bAnswer:", response, re.IGNORECASE):
+            # Split on Answer: and take everything after the last occurrence
+            parts = re.split(r"\bAnswer:\s*", response, flags=re.IGNORECASE)
+            answer = parts[-1].strip()
+        else:
+            # Fallback: extract last number from response
+            numbers = re.findall(r"[-+]?\d+(?:\.\d+)?", response)
+            answer = numbers[-1] if numbers else response.strip()
+
         return {"answer": answer, "num_calls": 1}
 
 
