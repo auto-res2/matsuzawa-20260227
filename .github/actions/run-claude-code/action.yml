@@ -81,5 +81,24 @@ runs:
         allowed_bots: '*'
         show_full_output: true
         claude_args: "--model=${{ env.CLAUDE_MODEL_NAME }} --max-turns=${{ inputs.max_turns }} ${{ env.CLAUDE_MCP_FLAG }}"
+        settings: |
+          {
+            "permissions": {
+              "allow": [
+                "Bash(*)",
+                "Read",
+                "Write",
+                "Edit",
+                "MultiEdit",
+                "Glob",
+                "Grep",
+                "NotebookEdit",
+                "TodoWrite",
+                "mcp__*"
+              ]
+            },
+            "permissionMode": "allowlist",
+            "enableAllProjectMcpServers": true
+          }
       env:
         MCP_TIMEOUT: ${{ inputs.mcp_timeout }}
