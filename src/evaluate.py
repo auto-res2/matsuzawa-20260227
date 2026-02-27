@@ -20,6 +20,39 @@ import numpy as np
 from scipy import stats
 
 
+# [VALIDATOR FIX - Attempt 1]
+# [PROBLEM]: TypeError: Object of type SummarySubDict is not JSON serializable
+# [CAUSE]: W&B's run.summary returns a SummarySubDict object which contains nested SummarySubDict objects that aren't recursively converted by dict()
+# [FIX]: Added recursive conversion function to ensure all nested WandB objects are converted to plain Python dicts/lists before JSON serialization
+#
+# [OLD CODE]:
+# def fetch_run_data(entity: str, project: str, run_id: str) -> Dict[str, Any]:
+#     ...
+#     config = dict(run.config)
+#     summary = dict(run.summary)
+#     ...
+#
+# [NEW CODE]:
+def _convert_to_plain_dict(obj: Any) -> Any:
+    """
+    Recursively convert WandB objects to plain Python types for JSON serialization.
+
+    Args:
+        obj: Object to convert (can be dict, list, or primitive)
+
+    Returns:
+        Plain Python object (dict, list, or primitive)
+    """
+    if hasattr(obj, "_attrs"):  # WandB SummarySubDict or similar
+        return {k: _convert_to_plain_dict(v) for k, v in obj.items()}
+    elif isinstance(obj, dict):
+        return {k: _convert_to_plain_dict(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [_convert_to_plain_dict(item) for item in obj]
+    else:
+        return obj
+
+
 def fetch_run_data(entity: str, project: str, run_id: str) -> Dict[str, Any]:
     """
     Fetch run data from WandB API.
@@ -47,15 +80,15 @@ def fetch_run_data(entity: str, project: str, run_id: str) -> Dict[str, Any]:
     # Get most recent run
     run = runs[0]
 
-    # Extract data
-    config = dict(run.config)
-    summary = dict(run.summary)
+    # Extract data - recursively convert to plain dicts for JSON serialization
+    config = _convert_to_plain_dict(dict(run.config))
+    summary = _convert_to_plain_dict(dict(run.summary))
 
     # Get history (if available)
     history = []
     try:
         for row in run.scan_history():
-            history.append(dict(row))
+            history.append(_convert_to_plain_dict(dict(row)))
     except Exception as e:
         print(f"Warning: Could not fetch history for {run_id}: {e}")
 
