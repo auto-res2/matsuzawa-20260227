@@ -6,7 +6,9 @@ Fetches results from WandB and creates comparative plots.
 import os
 import sys
 import json
-import argparse
+import hydra
+from hydra.core.config_store import ConfigStore
+from omegaconf import DictConfig, OmegaConf
 from pathlib import Path
 from typing import List, Dict, Any
 import wandb
@@ -244,21 +246,42 @@ def create_comparison_plots(
     return generated_files
 
 
-def main():
+# Register default config with ConfigStore
+cs = ConfigStore.instance()
+cs.store(name="eval_config", node={"results_dir": ".research/results", "run_ids": "[]"})
+
+
+@hydra.main(version_base=None, config_path=None, config_name="eval_config")
+def main(cfg: DictConfig):
     """Main evaluation function."""
-    parser = argparse.ArgumentParser(description="Evaluate and compare experiment runs")
-    parser.add_argument(
-        "--results_dir", type=str, required=True, help="Results directory"
-    )
-    parser.add_argument(
-        "--run_ids", type=str, required=True, help="JSON string list of run IDs"
-    )
+    # [VALIDATOR FIX - Attempt 1]
+    # [PROBLEM]: argparse expects --results_dir and --run_ids but workflow passes results_dir= and run_ids= (Hydra style)
+    # [CAUSE]: evaluate.py used argparse while workflow called it with Hydra-style arguments
+    # [FIX]: Converted from argparse to Hydra with a default config to accept CLI overrides without + prefix
+    #
+    # [OLD CODE]:
+    # parser = argparse.ArgumentParser(description="Evaluate and compare experiment runs")
+    # parser.add_argument(
+    #     "--results_dir", type=str, required=True, help="Results directory"
+    # )
+    # parser.add_argument(
+    #     "--run_ids", type=str, required=True, help="JSON string list of run IDs"
+    # )
+    # args = parser.parse_args()
+    # run_ids = json.loads(args.run_ids)
+    # results_dir = Path(args.results_dir)
+    #
+    # [NEW CODE]:
 
-    args = parser.parse_args()
+    # Parse run_ids from Hydra config (passed as CLI overrides)
+    # Hydra may parse JSON arrays directly into ListConfig, so handle both cases
+    if isinstance(cfg.run_ids, str):
+        run_ids = json.loads(cfg.run_ids)
+    else:
+        # Already parsed by Hydra as a list
+        run_ids = list(cfg.run_ids)
 
-    # Parse run_ids
-    run_ids = json.loads(args.run_ids)
-    results_dir = Path(args.results_dir)
+    results_dir = Path(cfg.results_dir)
 
     print(f"Evaluating {len(run_ids)} runs:")
     for run_id in run_ids:
