@@ -165,9 +165,9 @@ Across these threads, the distinctive aspect of SG-DRaME is the combination of (
 
 We study prompt-only inference-time wrappers for solving grade-school math word problems, where the model must output a single numeric answer. The central goal is to improve reliability without fine-tuning and under a strict limit on the number of model calls per question.
 
-Problem setting and notation: Let q denote a word-problem question and y* its gold numeric answer. A prompt-only method interacts with a black-box LLM through a function f(p) that maps a prompt p to a text response. Because we focus on black-box settings, we assume no access to token-level probabilities or log probabilities. Each method produces a predicted answer y_hat and consumes c model calls.
+Problem setting and notation: Let q denote a word-problem question and y* its gold numeric answer. A prompt-only method interacts with a black-box LLM through a function f(p) that maps a prompt p to a text response. Because we focus on black-box settings, we assume no access to token-level probabilities or log probabilities. Each method produces a predicted answer $\hat{y}$ and consumes c model calls.
 
-Answer normalization and correctness: We evaluate by normalizing the model output into a canonical numeric string. Concretely, we (i) strip whitespace, (ii) remove commas, (iii) extract the first signed number matching the regex -?\d+(?:\.\d+)?, and (iv) remove a trailing .0 if present. A prediction is counted as correct if its normalized value matches the normalized gold answer as a string. Additionally, when both can be parsed as floats, we allow a tolerance of 1e-4 to handle formatting variations such as 2 versus 2.0.
+Answer normalization and correctness: We evaluate by normalizing the model output into a canonical numeric string. Concretely, we (i) strip whitespace, (ii) remove commas, (iii) extract the first signed number matching a regex pattern, and (iv) remove a trailing .0 if present. A prediction is counted as correct if its normalized value matches the normalized gold answer as a string. Additionally, when both can be parsed as floats, we allow a tolerance of 1e-4 to handle formatting variations such as 2 versus 2.0.
 
 Chain-of-thought prompting and hidden CoT: CoT prompting elicits intermediate reasoning that improves performance on multi-step problems \cite{wei-2022-chain}. Zero-shot CoT demonstrates that a short natural-language trigger can elicit such reasoning even without exemplars \cite{kojima-2022-large}. In settings where exposing detailed reasoning is undesirable, a common variant is hidden CoT: instruct the model to reason step-by-step but output only a final answer in a strict format. Our work adopts this interface throughout.
 
@@ -199,7 +199,7 @@ Relative to unconditional multi-sampling, SG-DRaME differs in two ways. It does 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Experimental Setup}
 
-Task and dataset: We evaluate on GSM8K grade-school math word problems \cite{wei-2022-chain}. We use the GSM8K test split and select a subset of 200 examples with shuffle_seed = 42 using a standard dataset loader. Gold answers are extracted from GSM8K’s “#### <answer>” annotation format.
+Task and dataset: We evaluate on GSM8K grade-school math word problems \cite{wei-2022-chain}. We use the GSM8K test split and select a subset of 200 examples with \texttt{shuffle\_seed = 42} using a standard dataset loader. Gold answers are extracted from GSM8K’s “” annotation format.
 
 Model access and decoding: All methods use the same instruction-following model, gpt-4o-mini, accessed through a simple API wrapper. For deterministic methods (zero-shot direct, hidden CoT, and SG-DRaME), temperature is set to 0.0. For self-consistency, temperature is set to 0.7 to induce diversity across samples. Maximum output tokens are 64 for the direct-answer baseline and 512 for methods that may produce reasoning text before the final “ANSWER:” delimiter.
 
@@ -215,7 +215,7 @@ SG-DRaME uses two or three calls. It runs Derive-1 and Stability Probe at temper
 
 Metrics: The primary metric is accuracy (exact match after normalization), with an additional numeric tolerance of 1e-4 when both prediction and gold parse as floats. Efficiency metrics include average calls per question and total calls.
 
-Experiment management: Runs are logged to Weights and Biases. An evaluation script fetches per-run summaries and generates comparison plots. The figures produced by this pipeline are comparison_accuracy.pdf, comparison_avg_calls.pdf, and comparison_pareto.pdf.
+Experiment management: Runs are logged to Weights and Biases. An evaluation script fetches per-run summaries and generates comparison plots. The figures produced by this pipeline are comparison\_accuracy.pdf, comparison\_avg\_calls.pdf, and comparison\_pareto.pdf.
 
 Reproducibility constraints: The subset selection seed and prompt templates are fixed in configuration files. No training or fine-tuning is performed.
 
@@ -227,32 +227,47 @@ All results in this section are taken directly from the recorded run summaries f
 Experiment 1: Overall accuracy and compute
 The primary comparison is overall accuracy at the realized call budgets:
 
-Zero-shot Direct achieves 66 correct out of 200, for accuracy 0.33, using avg_calls = 1.00 (total_calls = 200).
+Zero-shot Direct achieves 66 correct out of 200, for accuracy 0.33, using avg\_calls = 1.00 (total\_calls = 200).
 
-Hidden CoT achieves 119 correct out of 200, for accuracy 0.595, using avg_calls = 1.00 (total_calls = 200).
+Hidden CoT achieves 119 correct out of 200, for accuracy 0.595, using avg\_calls = 1.00 (total\_calls = 200).
 
-Self-Consistency (3 samples) achieves 185 correct out of 200, for accuracy 0.925, using avg_calls = 3.00 (total_calls = 600).
+Self-Consistency (3 samples) achieves 185 correct out of 200, for accuracy 0.925, using avg\_calls = 3.00 (total\_calls = 600).
 
-SG-DRaME (proposed) achieves 189 correct out of 200, for accuracy 0.945, using avg_calls = 2.09 (total_calls = 418).
+SG-DRaME (proposed) achieves 189 correct out of 200, for accuracy 0.945, using avg\_calls = 2.09 (total\_calls = 418).
 
-SG-DRaME attains the highest absolute accuracy among evaluated methods and improves over the strongest baseline in accuracy (self-consistency) by +0.020 (189 versus 185 correct) while reducing average calls from 3.00 to 2.09. The accuracy and cost comparisons are visualized in @fig:comparison-accuracy and @fig:comparison-avg-calls.
+SG-DRaME attains the highest absolute accuracy among evaluated methods and improves over the strongest baseline in accuracy (self-consistency) by +0.020 (189 versus 185 correct) while reducing average calls from 3.00 to 2.09. The accuracy and cost comparisons are visualized in \cref{fig:comparison-accuracy} and \cref{fig:comparison-avg-calls}.
 
-![Accuracy comparison across methods on GSM8K-200; higher values indicate better performance.](images/comparison_accuracy.pdf){#fig:comparison-accuracy}
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\textwidth]{images/comparison_accuracy.pdf}
+\caption{Accuracy comparison across methods on GSM8K-200; higher values indicate better performance.}
+\label{fig:comparison-accuracy}
+\end{figure}
 
-![Average API calls per question across methods on GSM8K-200; lower values indicate better performance.](images/comparison_avg_calls.pdf){#fig:comparison-avg-calls}
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\textwidth]{images/comparison_avg_calls.pdf}
+\caption{Average API calls per question across methods on GSM8K-200; lower values indicate better performance.}
+\label{fig:comparison-avg-calls}
+\end{figure}
 
 Experiment 2: Accuracy–cost tradeoff
-To summarize the tradeoff between reliability and call budget, we compare methods in the accuracy versus average calls plane. The resulting plot is provided in @fig:comparison-pareto.
+To summarize the tradeoff between reliability and call budget, we compare methods in the accuracy versus average calls plane. The resulting plot is provided in \cref{fig:comparison-pareto}.
 
 In this evaluation, SG-DRaME occupies a favorable point (accuracy 0.945 at 2.09 calls per question). Self-consistency reaches accuracy 0.925 but requires 3 calls per question, while the single-call hidden-CoT baseline reaches accuracy 0.595 at 1 call per question. Thus, under regimes that demand high absolute accuracy, SG-DRaME provides better accuracy than the always-3-call baseline at substantially lower average cost.
 
-![Accuracy versus average API calls per question (Pareto comparison) on GSM8K-200; higher accuracy is better and lower calls are better.](images/comparison_pareto.pdf){#fig:comparison-pareto}
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\textwidth]{images/comparison_pareto.pdf}
+\caption{Accuracy versus average API calls per question (Pareto comparison) on GSM8K-200; higher accuracy is better and lower calls are better.}
+\label{fig:comparison-pareto}
+\end{figure}
 
 Experiment 3: Inferred repair-trigger frequency
-SG-DRaME uses exactly 2 calls when the first two answers agree and 3 calls when they disagree. Therefore, avg_calls = 2 + d, where d is the fraction of questions that trigger the repair step. With avg_calls = 2.09, the implied repair-trigger frequency is d ≈ 0.09, corresponding to roughly 18 out of 200 questions receiving a third call.
+SG-DRaME uses exactly 2 calls when the first two answers agree and 3 calls when they disagree. Therefore, $\text{avg\_calls} = 2 + d$, where $d$ is the fraction of questions that trigger the repair step. With $\text{avg\_calls} = 2.09$, the implied repair-trigger frequency is $d \approx 0.09$, corresponding to roughly 18 out of 200 questions receiving a third call.
 
 Limitations of the reported diagnostics
-The current run summaries do not separately report per-question disagreement_rate, intermediate candidate answers, or conditional accuracies on the agree versus disagree subsets. As a result, we do not claim direct evidence that disagreement is more predictive of error than alternative uncertainty heuristics in this specific run, beyond the aggregate efficiency implied by avg_calls. Similarly, we cannot report repair success rate, since we do not have the before-repair correctness breakdown.
+The current run summaries do not separately report per-question disagreement\_rate, intermediate candidate answers, or conditional accuracies on the agree versus disagree subsets. As a result, we do not claim direct evidence that disagreement is more predictive of error than alternative uncertainty heuristics in this specific run, beyond the aggregate efficiency implied by avg\_calls. Similarly, we cannot report repair success rate, since we do not have the before-repair correctness breakdown.
 
 Additional limitations and fairness considerations
 The self-consistency baseline uses temperature 0.7 by design to induce sample diversity, while the other methods use temperature 0. This makes the comparison realistic for self-consistency but not strictly matched in decoding stochasticity. All methods, however, use the same underlying model and the same evaluation subset, and the compute accounting is explicit via average and total call counts.
