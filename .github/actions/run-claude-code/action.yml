@@ -72,28 +72,6 @@ runs:
           echo "EOF" >> $GITHUB_ENV
         fi
 
-    - name: Build allowedTools for MCP servers
-      shell: bash
-      run: |
-        # Extract MCP server names from config files and build --allowedTools flags
-        MCP_ALLOWED=""
-        DEFAULT_MCP=".github/mcp-config.json"
-        if [ -f "$DEFAULT_MCP" ]; then
-          SERVERS=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1])); print(' '.join(data.get('mcpServers',{}).keys()))" "$DEFAULT_MCP" 2>/dev/null || true)
-          for s in $SERVERS; do
-            MCP_ALLOWED="${MCP_ALLOWED} --allowedTools mcp__${s}__*"
-            echo "Added MCP tool pattern: mcp__${s}__*"
-          done
-        fi
-        if [ -n "${{ inputs.mcp_config }}" ] && [ -f "${{ inputs.mcp_config }}" ]; then
-          SERVERS=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1])); print(' '.join(data.get('mcpServers',{}).keys()))" "${{ inputs.mcp_config }}" 2>/dev/null || true)
-          for s in $SERVERS; do
-            MCP_ALLOWED="${MCP_ALLOWED} --allowedTools mcp__${s}__*"
-            echo "Added MCP tool pattern: mcp__${s}__*"
-          done
-        fi
-        echo "CLAUDE_MCP_ALLOWED=${MCP_ALLOWED}" >> $GITHUB_ENV
-
     - name: Execute Claude Code
       continue-on-error: true
       uses: anthropics/claude-code-action@v1
@@ -102,6 +80,10 @@ runs:
         prompt: ${{ env.CLAUDE_PROMPT }}
         allowed_bots: '*'
         show_full_output: true
-        claude_args: "--model=${{ env.CLAUDE_MODEL_NAME }} --max-turns=${{ inputs.max_turns }} --allowedTools Bash(*),Read,Write,Edit,MultiEdit,Glob,Grep,NotebookEdit,TodoWrite ${{ env.CLAUDE_MCP_ALLOWED }} ${{ env.CLAUDE_MCP_FLAG }}"
+        claude_args: "--model=${{ env.CLAUDE_MODEL_NAME }} --max-turns=${{ inputs.max_turns }} ${{ env.CLAUDE_MCP_FLAG }}"
+        settings: |
+          {
+            "permissionMode": "bypassPermissions"
+          }
       env:
         MCP_TIMEOUT: ${{ inputs.mcp_timeout }}
