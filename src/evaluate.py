@@ -33,6 +33,35 @@ from scipy import stats
 #     ...
 #
 # [NEW CODE]:
+# [VALIDATOR FIX - Attempt 1]
+# [PROBLEM]: TypeError: Object of type SummarySubDict is not JSON serializable at line 353
+# [CAUSE]: W&B's SummarySubDict objects are not being properly converted to plain dicts.
+#          The check for hasattr(obj, "_attrs") doesn't catch all W&B objects, and dict()
+#          conversion doesn't recursively convert nested SummarySubDict objects.
+# [FIX]: Check for W&B object types by class name (SummarySubDict) in addition to _attrs,
+#        and ensure all dict-like objects are recursively converted before the isinstance check.
+#
+# [OLD CODE]:
+# def _convert_to_plain_dict(obj: Any) -> Any:
+#     """
+#     Recursively convert WandB objects to plain Python types for JSON serialization.
+#
+#     Args:
+#         obj: Object to convert (can be dict, list, or primitive)
+#
+#     Returns:
+#         Plain Python object (dict, list, or primitive)
+#     """
+#     if hasattr(obj, "_attrs"):  # WandB SummarySubDict or similar
+#         return {k: _convert_to_plain_dict(v) for k, v in obj.items()}
+#     elif isinstance(obj, dict):
+#         return {k: _convert_to_plain_dict(v) for k, v in obj.items()}
+#     elif isinstance(obj, (list, tuple)):
+#         return [_convert_to_plain_dict(item) for item in obj]
+#     else:
+#         return obj
+#
+# [NEW CODE]:
 def _convert_to_plain_dict(obj: Any) -> Any:
     """
     Recursively convert WandB objects to plain Python types for JSON serialization.
@@ -43,7 +72,14 @@ def _convert_to_plain_dict(obj: Any) -> Any:
     Returns:
         Plain Python object (dict, list, or primitive)
     """
-    if hasattr(obj, "_attrs"):  # WandB SummarySubDict or similar
+    # Check for W&B objects by class name and _attrs attribute
+    # Also handle any dict subclass (not plain dict) to catch all W&B types
+    obj_type = type(obj).__name__
+    if (
+        obj_type == "SummarySubDict"
+        or hasattr(obj, "_attrs")
+        or (isinstance(obj, dict) and type(obj) != dict)
+    ):
         return {k: _convert_to_plain_dict(v) for k, v in obj.items()}
     elif isinstance(obj, dict):
         return {k: _convert_to_plain_dict(v) for k, v in obj.items()}
