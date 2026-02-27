@@ -817,5 +817,65 @@
     "experimental_code": "import re\nfrom collections import Counter\n\ndef extract_number(text: str):\n    m = re.search(r\"-?\\d+(?:\\.\\d+)?\", text.replace(\",\", \"\"))\n    return m.group(0) if m else None\n\ndef normalize_answer(ans: str):\n    ans = ans.strip()\n    num = extract_number(ans)\n    return num if num is not None else ans\n\n# ---- SG-DRaME core ----\n\nDERIVE_1 = (\n    \"You are a careful solver. Think step by step internally, but do NOT show your steps. \"\n    \"Return only the final answer in arabic numerals on one line as: ANSWER: <number>.\"\n)\n\nPROBE = (\n    \"Solve using a different frame: first write the key equation(s) implied by the story, \"\n    \"then compute. Think internally, but do NOT show steps. \"\n    \"Return only: ANSWER: <number>.\"\n)\n\nVERIFY = (\n    \"We have two candidate answers to the same question. \"\n    \"Check which one satisfies the problem constraints (e.g., units, substitution back into the story, \"\n    \"sanity checks like monotonicity/parity). Do NOT show detailed reasoning. \"\n    \"Output only: ANSWER: <number>.\"\n)\n\ndef sg_drame_solve(llm_call, question: str):\n    \"\"\"llm_call(prompt) -> text. Uses 2 calls normally, 3 if disagreement.\"\"\"\n\n    p1 = f\"{DERIVE_1}\\n\\nQ: {question}\\n\"\n    a1_text = llm_call(p1)\n    a1 = normalize_answer(a1_text.replace(\"ANSWER:\", \"\"))\n\n    p2 = f\"{PROBE}\\n\\nQ: {question}\\n\"\n    a2_text = llm_call(p2)\n    a2 = normalize_answer(a2_text.replace(\"ANSWER:\", \"\"))\n\n    if a1 == a2:\n        return a1, 2, False\n\n    v = (\n        f\"{VERIFY}\\n\\nQ: {question}\\n\"\n        f\"Candidate A: {a1}\\nCandidate B: {a2}\\n\"\n    )\n    a3_text = llm_call(v)\n    a3 = normalize_answer(a3_text.replace(\"ANSWER:\", \"\"))\n    return a3, 3, True\n\n# ---- Minimal evaluation helpers ----\n\ndef exact_match(pred, gold):\n    return normalize_answer(str(pred)) == normalize_answer(str(gold))\n\n# Note: dataset loading and llm_call implementation are intentionally omitted.\n# Plug in GSM8K/SVAMP loaders and an API/local model wrapper that returns text.",
     "expected_result": "On GSM8K-200 (temp=0), expected exact-match accuracy:\n- Direct Answer: ~30–38%\n- Zero-shot-CoT (2-stage): ~52–58%\n- Fixed 2-call Regenerate (always run two directives, take second): ~54–59% (small gain, inconsistent)\n- **SG-DRaME**: **~58–64%** with ~2.2–2.4 calls/question on average (verification only on ~20–40% disagreement cases).\n\nOn SVAMP-200, expect a similar pattern with slightly higher absolute accuracy.\n\nSecondary predictions:\n- Disagreement rate will be strongly correlated with error (e.g., accuracy ~70% when agree vs ~35% when disagree), supporting the “stability as uncertainty” claim.\n- At a matched average call budget (~2.3), SG-DRaME will dominate fixed strategies in accuracy-per-call Pareto comparisons.",
     "expected_conclusion": "A prompt-only, black-box **stability signal** (answer agreement under minimal directive edits) can reliably identify brittle reasoning cases and trigger verification only when needed. This yields a principled adaptive-compute CoT wrapper that is more portable than logprob-gated methods and has added social value by keeping CoT hidden (reducing leakage of sensitive reasoning traces and limiting step-by-step harmful guidance). Academically, the contribution reframes prompt-time reliability as **robustness-to-perturbation** rather than self-reported confidence, and empirically demonstrates a better accuracy–cost tradeoff than standard zero-shot CoT and fixed 2-call baselines—without fine-tuning or expensive self-consistency."
+  },
+  "experimental_design": {
+    "experiment_summary": "Task: solve grade-school math word problems by outputting only a final numeric answer (no visible chain-of-thought). We compare prompt-only inference wrappers that aim to improve reliability under a strict low call-budget. Proposed SG-DRaME runs (1) a hidden-CoT derivation call, (2) a minimally edited “stability probe” call that changes the reasoning frame while keeping output final-answer-only, and (3) only if the two answers disagree, a short constraint-check “repair” call to select the consistent answer. Purpose: test whether answer disagreement under minimal directive edits is a better uncertainty signal than typical heuristics, yielding a better accuracy–cost Pareto frontier. Scale fit to Runner (H200 140GB): no training; evaluation on a lightweight subset of GSM8K test (n=200) with temperature=0, max_output_tokens capped (e.g., 64) and strict answer format. This keeps GPU largely idle (API/local inference only) and runtime bounded (≈400–600 model calls total depending on disagreement rate).",
+    "runner_config": {
+      "runner_label": [
+        "self-hosted",
+        "gpu-runner"
+      ],
+      "description": "NVIDIA H200, VRAM: 140 GB, RAM: 240 GB"
+    },
+    "evaluation_metrics": [
+      {
+        "name": "accuracy",
+        "description": "Correctness criteria: a prediction is correct if the extracted final numeric value matches the gold numeric answer after normalization. Normalization: (i) strip whitespace, (ii) remove commas, (iii) extract the first signed number via regex -?\\d+(?:\\.\\d+)?, (iv) compare as strings after removing trailing .0; additionally allow numeric tolerance of 1e-4 when both parse as float to handle formatting (e.g., 2 vs 2.0). Calculation: accuracy = (1/N) * Σ_i 1[pred_i == gold_i under normalization/tolerance]. Task appropriateness: GSM8K expects a single final number; exact numeric correctness is the primary objective. Visualizations: bar chart of accuracy by method with 95% bootstrap CI; histogram of per-question correctness (binary) aggregated by question length bins."
+      },
+      {
+        "name": "avg_calls_per_question",
+        "description": "Correctness criteria: not applicable (efficiency metric). Calculation: avg_calls = (1/N) * Σ_i c_i where c_i is the number of LLM calls used for question i by the method (for SG-DRaME, c_i∈{2,3}; for baseline single-pass, c_i=1). Task appropriateness: directly measures selective-compute efficiency central to the hypothesis. Visualizations: violin/box plot of calls per question; scatter plot of accuracy vs avg_calls for each method (Pareto frontier)."
+      },
+      {
+        "name": "disagreement_rate",
+        "description": "Correctness criteria: not applicable. Definition (SG-DRaME only): disagreement occurs when normalized answers from Derive-1 and Stability Probe differ. Calculation: disagree_rate = (1/N) * Σ_i 1[a1_i != a2_i]. Task appropriateness: measures the internal stability signal used for gating and allows cost prediction. Visualizations: bar chart of disagreement rate with CI; calibration-style plot of error rate conditional on agree vs disagree."
+      },
+      {
+        "name": "conditional_accuracy_agree_disagree",
+        "description": "Correctness criteria: same as accuracy, computed on subsets. Calculation: acc_agree = (1/|A|)*Σ_{i∈A}1[correct_i], acc_disagree = (1/|D|)*Σ_{i∈D}1[correct_i], where A={i:a1_i=a2_i}, D={i:a1_i≠a2_i}. Also report Δ=acc_agree-acc_disagree. Task appropriateness: directly tests the claim that instability predicts incorrectness. Visualizations: two bars (agree vs disagree) with CIs; optionally reliability diagram plotting P(correct|disagree flag)."
+      },
+      {
+        "name": "accuracy_per_call",
+        "description": "Correctness criteria: derived metric. Calculation: accuracy_per_call = accuracy / avg_calls_per_question. Also report cost-adjusted accuracy at fixed call budget B via subsampling/mixture: for methods with variable calls, compute expected accuracy under truncation policy; for fixed-call methods, compare points on accuracy–calls plane. Task appropriateness: captures the accuracy–compute tradeoff emphasized in the hypothesis. Visualizations: Pareto plot (accuracy vs avg_calls) with iso-lines of constant accuracy_per_call."
+      },
+      {
+        "name": "bootstrap_95ci",
+        "description": "Correctness criteria: statistical interval coverage is not guaranteed but standard. Calculation: for any metric m, resample N questions with replacement 1000 times, compute m on each resample, take 2.5th and 97.5th percentiles as 95% CI. Task appropriateness: lightweight, distribution-free uncertainty estimate suitable for n=200. Visualizations: error bars on all reported scalar metrics."
+      }
+    ],
+    "models_to_use": [
+      "gemini-2.5-flash (params: unknown)"
+    ],
+    "datasets_to_use": [
+      "GSM8K"
+    ],
+    "proposed_method": {
+      "method_name": "SG-DRaME (Stability-Gated Dual-Reasoning with Minimal Edits)",
+      "description": "Prompt-only selective-compute wrapper: run two final-answer-only solves with minimally different reasoning directives to obtain an answer stability signal. If the two answers agree, return it; if they disagree, run a short constraint-check verifier to choose the consistent candidate. Novelty: uses behavioral instability under controlled prompt perturbation (no logprobs, no self-reported confidence) to gate extra compute, while keeping chain-of-thought hidden.",
+      "optuna_config": {
+        "enabled": false,
+        "n_trials": 0
+      }
+    },
+    "comparative_methods": [
+      {
+        "method_name": "Zero-shot CoT (single-call, hidden)",
+        "description": "Single inference call prompting the model to reason step-by-step internally but output only a final numeric answer. This tests whether stability-gating beats standard prompt-only CoT without extra calls.",
+        "optuna_config": {
+          "enabled": false,
+          "n_trials": 0
+        }
+      }
+    ]
   }
 }
