@@ -17,9 +17,9 @@ inputs:
     required: false
     default: '100'
   allowed_tools:
-    description: 'Comma-separated list of allowed tools'
+    description: 'Space-separated list of allowed tools (use Bash(*) for all bash commands)'
     required: false
-    default: 'Bash,Write,Edit,MultiEdit,TodoWrite'
+    default: 'Bash(*) Read Write Edit MultiEdit Glob Grep NotebookEdit TodoWrite'
   timeout_minutes:
     description: 'Timeout in minutes for Claude Code execution'
     required: false
@@ -66,7 +66,7 @@ runs:
         for f in "${MCP_FILES[@]}"; do
           SERVERS=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1])); print(' '.join(data.get('mcpServers',{}).keys()))" "$f" 2>/dev/null || true)
           for s in $SERVERS; do
-            MCP_TOOLS="${MCP_TOOLS},mcp__${s}__*"
+            MCP_TOOLS="${MCP_TOOLS} mcp__${s}__*"
             echo "Added MCP tool pattern: mcp__${s}__*"
           done
         done
@@ -98,5 +98,7 @@ runs:
         allowed_bots: '*'
         show_full_output: true
         claude_args: "--model=${{ env.CLAUDE_MODEL_NAME }} --max-turns=${{ inputs.max_turns }} --allowedTools ${{ inputs.allowed_tools }}${{ env.CLAUDE_MCP_TOOLS }} ${{ env.CLAUDE_MCP_FLAG }}"
+        # Note: --allowedTools uses space-separated patterns. Bash(*) allows all bash commands.
+        # MCP tools use pattern: mcp__servername__*
       env:
         MCP_TIMEOUT: ${{ inputs.mcp_timeout }}
