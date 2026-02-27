@@ -1,0 +1,28 @@
+# Comparative baseline 0: Zero-shot direct (no CoT, single call)
+run_id: comparative-0-gsm8k
+
+method:
+  type: zero_shot_direct
+  name: "Zero-shot Direct"
+  description: "Single call, direct answer without explicit reasoning"
+  max_calls: 1
+  prompt: "Answer the following question with only the final numeric answer, no explanation:"
+
+model:
+  provider: openai
+  model_name: gpt-4o-mini
+  temperature: 0.0
+  max_tokens: 64
+
+dataset:
+  name: gsm8k
+  split: test
+  num_samples: 200
+  shuffle_seed: 42
+
+inference:
+  batch_size: 1
+  num_workers: 1
+
+wandb:
+  tags: ["comparative", "zero-shot", "gsm8k"]

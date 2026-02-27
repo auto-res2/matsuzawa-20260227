@@ -1,0 +1,28 @@
+# Comparative baseline 1: Standard hidden CoT (single call)
+run_id: comparative-1-gsm8k
+
+method:
+  type: hidden_cot
+  name: "Hidden CoT"
+  description: "Single call with hidden chain-of-thought instruction"
+  max_calls: 1
+  prompt: "Think step-by-step internally, then output only the final numeric answer:"
+
+model:
+  provider: openai
+  model_name: gpt-4o-mini
+  temperature: 0.0
+  max_tokens: 64
+
+dataset:
+  name: gsm8k
+  split: test
+  num_samples: 200
+  shuffle_seed: 42
+
+inference:
+  batch_size: 1
+  num_workers: 1
+
+wandb:
+  tags: ["comparative", "hidden-cot", "gsm8k"]

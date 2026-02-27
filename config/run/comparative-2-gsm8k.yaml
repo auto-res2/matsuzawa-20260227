@@ -1,0 +1,30 @@
+# Comparative baseline 2: Self-consistency with 3 samples
+run_id: comparative-2-gsm8k
+
+method:
+  type: self_consistency
+  name: "Self-Consistency"
+  description: "Sample 3 times, take majority vote"
+  max_calls: 3
+  num_samples: 3
+  prompt: "Think step-by-step internally, then output only the final numeric answer:"
+  temperature: 0.7  # need temperature > 0 for diversity
+
+model:
+  provider: openai
+  model_name: gpt-4o-mini
+  temperature: 0.7
+  max_tokens: 64
+
+dataset:
+  name: gsm8k
+  split: test
+  num_samples: 200
+  shuffle_seed: 42
+
+inference:
+  batch_size: 1
+  num_workers: 1
+
+wandb:
+  tags: ["comparative", "self-consistency", "gsm8k"]

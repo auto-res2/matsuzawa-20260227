@@ -1,0 +1,31 @@
+# Proposed method: SG-DRaME (Stability-Gated Dual-Reasoning with Minimal Edits)
+run_id: proposed-gsm8k
+
+method:
+  type: sg_drame
+  name: "SG-DRaME"
+  description: "Stability-Gated Dual-Reasoning with Minimal Edits"
+  max_calls: 3
+  derive1_prompt: "Think step-by-step internally but output only the final numeric answer."
+  stability_probe_edit: "Solve by writing equations first, then output only the final numeric answer."
+  repair_prompt: "Two attempts gave different answers: {answer1} and {answer2}. Perform a constraint check (units, parity, monotonicity, substitution) and output only the correct final numeric answer."
+
+model:
+  provider: openai
+  model_name: gpt-4o-mini
+  temperature: 0.0
+  max_tokens: 64
+
+dataset:
+  name: gsm8k
+  split: test
+  num_samples: 200  # lightweight subset for evaluation
+  shuffle_seed: 42
+
+inference:
+  batch_size: 1  # process one question at a time
+  num_workers: 1
+
+# WandB logging (mode will be overridden by main config in sanity_check)
+wandb:
+  tags: ["proposed", "sg-drame", "gsm8k"]
