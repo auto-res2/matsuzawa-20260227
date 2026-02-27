@@ -1,10 +1,10 @@
 # Proposed method: SG-DRaME (Stability-Gated Dual-Reasoning with Minimal Edits)
 run_id: proposed-gsm8k
 
-# [VALIDATOR FIX - Attempt 1]
-# [PROBLEM]: Model may not output clean numeric answers consistently
-# [CAUSE]: Prompts could be clearer about output format requirements
-# [FIX]: Strengthened all prompts with explicit format instructions
+# [VALIDATOR FIX - Attempt 3]
+# [PROBLEM]: normalize_number extracts first number which may be from reasoning, not final answer
+# [CAUSE]: max_tokens=64 insufficient; prompts don't use delimiter for clean extraction
+# [FIX]: Added ANSWER: delimiter to all prompts and increased max_tokens for reasoning space
 #
 # [OLD CODE]:
 # method:
@@ -12,9 +12,9 @@ run_id: proposed-gsm8k
 #   name: "SG-DRaME"
 #   description: "Stability-Gated Dual-Reasoning with Minimal Edits"
 #   max_calls: 3
-#   derive1_prompt: "Think step-by-step internally but output only the final numeric answer."
-#   stability_probe_edit: "Solve by writing equations first, then output only the final numeric answer."
-#   repair_prompt: "Two attempts gave different answers: {answer1} and {answer2}. Perform a constraint check (units, parity, monotonicity, substitution) and output only the correct final numeric answer."
+#   derive1_prompt: "Think step-by-step internally to solve this. Output ONLY a single number as your final answer - no words, units, or labels.\n\nQuestion:"
+#   stability_probe_edit: "Solve by writing equations first. Output ONLY a single number as your final answer - no words, units, or labels.\n\nQuestion:"
+#   repair_prompt: "Two solution attempts gave: {answer1} and {answer2}. Check which is correct using constraint validation. Output ONLY the correct number - no words, units, or labels.\n\nQuestion:"
 #
 # [NEW CODE]:
 method:
@@ -22,15 +22,15 @@ method:
   name: "SG-DRaME"
   description: "Stability-Gated Dual-Reasoning with Minimal Edits"
   max_calls: 3
-  derive1_prompt: "Think step-by-step internally to solve this. Output ONLY a single number as your final answer - no words, units, or labels.\n\nQuestion:"
-  stability_probe_edit: "Solve by writing equations first. Output ONLY a single number as your final answer - no words, units, or labels.\n\nQuestion:"
-  repair_prompt: "Two solution attempts gave: {answer1} and {answer2}. Check which is correct using constraint validation. Output ONLY the correct number - no words, units, or labels.\n\nQuestion:"
+  derive1_prompt: "Solve this problem step-by-step. After your reasoning, write 'ANSWER:' followed by only the final numeric answer.\n\nQuestion:"
+  stability_probe_edit: "Solve by writing equations first. After your reasoning, write 'ANSWER:' followed by only the final numeric answer.\n\nQuestion:"
+  repair_prompt: "Two solution attempts gave: {answer1} and {answer2}. Check which is correct using constraint validation. Write 'ANSWER:' followed by only the correct final numeric answer.\n\nQuestion:"
 
 model:
   provider: openai
   model_name: gpt-4o-mini
   temperature: 0.0
-  max_tokens: 64
+  max_tokens: 512  # Allow space for reasoning
 
 dataset:
   name: gsm8k

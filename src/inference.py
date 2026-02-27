@@ -42,8 +42,28 @@ class ZeroShotDirect(InferenceMethod):
         # [CAUSE]: get_method now receives config.run instead of config
         # [FIX]: self.config already points to the run config, so no changes needed here
         # (The fix was in run_inference where we pass config.run to get_method)
+
+        # [VALIDATOR FIX - Attempt 3]
+        # [PROBLEM]: Model may output extra text, normalize_number extracts first number which may be wrong
+        # [CAUSE]: Even with "output only number" prompt, model may add context or list multiple numbers
+        # [FIX]: For consistency with HiddenCoT, support ANSWER: delimiter extraction
+        #
+        # [OLD CODE]:
+        # prompt = f"{self.config.method.prompt}\n\n{question}"
+        # answer = self.model.generate(prompt)
+        # return {"answer": answer, "num_calls": 1}
+        #
+        # [NEW CODE]:
         prompt = f"{self.config.method.prompt}\n\n{question}"
-        answer = self.model.generate(prompt)
+        response = self.model.generate(prompt)
+
+        # Extract final answer after delimiter if present (for consistency)
+        if "ANSWER:" in response:
+            answer = response.split("ANSWER:")[-1].strip()
+        else:
+            # For zero-shot, we expect model to output just the number
+            answer = response
+
         return {"answer": answer, "num_calls": 1}
 
 
@@ -51,8 +71,27 @@ class HiddenCoT(InferenceMethod):
     """Hidden chain-of-thought (single call)."""
 
     def run(self, question: str) -> Dict[str, Any]:
+        # [VALIDATOR FIX - Attempt 3]
+        # [PROBLEM]: normalize_number extracts first number in response, which may be from reasoning steps
+        # [CAUSE]: Model outputs "1. Step one: 7+11=18\n2. ..." and normalize_number extracts "1" instead of final answer
+        # [FIX]: Extract text after "ANSWER:" delimiter if present, otherwise use full response
+        #
+        # [OLD CODE]:
+        # prompt = f"{self.config.method.prompt}\n\n{question}"
+        # answer = self.model.generate(prompt)
+        # return {"answer": answer, "num_calls": 1}
+        #
+        # [NEW CODE]:
         prompt = f"{self.config.method.prompt}\n\n{question}"
-        answer = self.model.generate(prompt)
+        response = self.model.generate(prompt)
+
+        # Extract final answer after delimiter
+        if "ANSWER:" in response:
+            answer = response.split("ANSWER:")[-1].strip()
+        else:
+            # Fallback: use full response (normalize_number will extract first number)
+            answer = response
+
         return {"answer": answer, "num_calls": 1}
 
 
@@ -60,13 +99,34 @@ class SelfConsistency(InferenceMethod):
     """Self-consistency with majority voting."""
 
     def run(self, question: str) -> Dict[str, Any]:
+        # [VALIDATOR FIX - Attempt 3]
+        # [PROBLEM]: normalize_number extracts first number which may not be the final answer
+        # [CAUSE]: Responses contain reasoning with numbers before the final answer
+        # [FIX]: Extract text after ANSWER: delimiter before normalization
+        #
+        # [OLD CODE]:
+        # num_samples = self.config.method.num_samples
+        # prompt = f"{self.config.method.prompt}\n\n{question}"
+        # answers = self.model.batch_generate([prompt] * num_samples, temperature=self.config.model.temperature)
+        # normalized = [normalize_number(ans) for ans in answers]
+        #
+        # [NEW CODE]:
         num_samples = self.config.method.num_samples
         prompt = f"{self.config.method.prompt}\n\n{question}"
 
         # Generate multiple samples with temperature > 0
-        answers = self.model.batch_generate(
+        responses = self.model.batch_generate(
             [prompt] * num_samples, temperature=self.config.model.temperature
         )
+
+        # Extract final answers after delimiter
+        answers = []
+        for response in responses:
+            if "ANSWER:" in response:
+                answer = response.split("ANSWER:")[-1].strip()
+            else:
+                answer = response
+            answers.append(answer)
 
         # Normalize and count
         normalized = [normalize_number(ans) for ans in answers]
@@ -87,13 +147,37 @@ class SGDRaME(InferenceMethod):
     """Stability-Gated Dual-Reasoning with Minimal Edits."""
 
     def run(self, question: str) -> Dict[str, Any]:
+        # [VALIDATOR FIX - Attempt 3]
+        # [PROBLEM]: normalize_number extracts first number from reasoning text, not final answer
+        # [CAUSE]: Responses contain reasoning steps with numbers before ANSWER: delimiter
+        # [FIX]: Extract text after ANSWER: before normalization and comparison
+        #
+        # [OLD CODE]:
+        # prompt1 = f"{self.config.method.derive1_prompt}\n\n{question}"
+        # answer1 = self.model.generate(prompt1)
+        # prompt2 = f"{self.config.method.stability_probe_edit}\n\n{question}"
+        # answer2 = self.model.generate(prompt2)
+        # norm1 = normalize_number(answer1)
+        # norm2 = normalize_number(answer2)
+        #
+        # [NEW CODE]:
         # Step 1: Derive-1 (hidden CoT)
         prompt1 = f"{self.config.method.derive1_prompt}\n\n{question}"
-        answer1 = self.model.generate(prompt1)
+        response1 = self.model.generate(prompt1)
+        answer1 = (
+            response1.split("ANSWER:")[-1].strip()
+            if "ANSWER:" in response1
+            else response1
+        )
 
         # Step 2: Stability probe (minimal edit)
         prompt2 = f"{self.config.method.stability_probe_edit}\n\n{question}"
-        answer2 = self.model.generate(prompt2)
+        response2 = self.model.generate(prompt2)
+        answer2 = (
+            response2.split("ANSWER:")[-1].strip()
+            if "ANSWER:" in response2
+            else response2
+        )
 
         # Normalize for comparison
         norm1 = normalize_number(answer1)
@@ -106,10 +190,15 @@ class SGDRaME(InferenceMethod):
         else:
             # Disagreement - run repair
             repair_prompt = self.config.method.repair_prompt.format(
-                answer1=answer1, answer2=answer2
+                answer1=norm1 or answer1, answer2=norm2 or answer2
             )
             repair_prompt = f"{repair_prompt}\n\n{question}"
-            final_answer = self.model.generate(repair_prompt)
+            response3 = self.model.generate(repair_prompt)
+            final_answer = (
+                response3.split("ANSWER:")[-1].strip()
+                if "ANSWER:" in response3
+                else response3
+            )
             return {"answer": final_answer, "num_calls": 3}
 
 

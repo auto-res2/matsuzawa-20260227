@@ -1,10 +1,10 @@
 # Comparative baseline 2: Self-consistency with 3 samples
 run_id: comparative-2-gsm8k
 
-# [VALIDATOR FIX - Attempt 1]
-# [PROBLEM]: Model may not output clean numeric answers consistently
-# [CAUSE]: Prompt could be clearer about output format
-# [FIX]: Strengthened output format instruction
+# [VALIDATOR FIX - Attempt 3]
+# [PROBLEM]: normalize_number extracts first number from text, which may be from reasoning steps
+# [CAUSE]: With max_tokens=64 and implicit reasoning, model may output numbers during reasoning
+# [FIX]: Added ANSWER: delimiter pattern and increased max_tokens for reasoning space
 #
 # [OLD CODE]:
 # method:
@@ -13,7 +13,7 @@ run_id: comparative-2-gsm8k
 #   description: "Sample 3 times, take majority vote"
 #   max_calls: 3
 #   num_samples: 3
-#   prompt: "Think step-by-step internally, then output only the final numeric answer:"
+#   prompt: "Think step-by-step internally to solve this. Output ONLY a single number as your final answer - no words, units, or labels.\n\nQuestion:"
 #   temperature: 0.7  # need temperature > 0 for diversity
 #
 # [NEW CODE]:
@@ -23,14 +23,14 @@ method:
   description: "Sample 3 times, take majority vote"
   max_calls: 3
   num_samples: 3
-  prompt: "Think step-by-step internally to solve this. Output ONLY a single number as your final answer - no words, units, or labels.\n\nQuestion:"
+  prompt: "Solve this problem step-by-step. After your reasoning, write 'ANSWER:' followed by only the final numeric answer.\n\nQuestion:"
   temperature: 0.7  # need temperature > 0 for diversity
 
 model:
   provider: openai
   model_name: gpt-4o-mini
   temperature: 0.7
-  max_tokens: 64
+  max_tokens: 512  # Allow space for reasoning
 
 dataset:
   name: gsm8k

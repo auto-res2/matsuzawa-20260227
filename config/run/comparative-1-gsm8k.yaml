@@ -1,10 +1,10 @@
 # Comparative baseline 1: Standard hidden CoT (single call)
 run_id: comparative-1-gsm8k
 
-# [VALIDATOR FIX - Attempt 2]
-# [PROBLEM]: Model outputs full text explanations instead of just numeric answers
-# [CAUSE]: Prompt instruction is not strong enough; model ignores "output only" instruction and shows reasoning
-# [FIX]: Changed to extremely direct prompt that demands only a number in response format
+# [VALIDATOR FIX - Attempt 3]
+# [PROBLEM]: Model produces incorrect answers (0% accuracy)
+# [CAUSE]: normalize_number extracts first number in text; with reasoning, it extracts wrong number
+# [FIX]: Structured prompt with delimiter so extraction finds the final answer, not reasoning numbers
 #
 # [OLD CODE]:
 # method:
@@ -12,7 +12,7 @@ run_id: comparative-1-gsm8k
 #   name: "Hidden CoT"
 #   description: "Single call with hidden chain-of-thought instruction"
 #   max_calls: 1
-#   prompt: "Think step-by-step internally to solve this problem. Then output ONLY a single number as your final answer - no words, explanations, units, or labels.\n\nQuestion:"
+#   prompt: "Answer with ONLY a number. No words, explanations, or units - just the number."
 #
 # [NEW CODE]:
 method:
@@ -20,13 +20,26 @@ method:
   name: "Hidden CoT"
   description: "Single call with hidden chain-of-thought instruction"
   max_calls: 1
-  prompt: "Answer with ONLY a number. No words, explanations, or units - just the number."
+  prompt: "Solve this problem step-by-step. After your reasoning, write 'ANSWER:' followed by only the final numeric answer.\n\nQuestion:"
 
+# [VALIDATOR FIX - Attempt 3]
+# [PROBLEM]: max_tokens=10 is too restrictive and may truncate reasoning or answers
+# [CAUSE]: With hidden CoT, model needs space to think internally even if output is just a number
+# [FIX]: Increased max_tokens to 512 to allow internal reasoning space
+#
+# [OLD CODE]:
+# model:
+#   provider: openai
+#   model_name: gpt-4o-mini
+#   temperature: 0.0
+#   max_tokens: 10  # Very low to force number-only output
+#
+# [NEW CODE]:
 model:
   provider: openai
   model_name: gpt-4o-mini
   temperature: 0.0
-  max_tokens: 10  # Very low to force number-only output
+  max_tokens: 512  # Allow space for internal reasoning while still expecting numeric output
 
 dataset:
   name: gsm8k
