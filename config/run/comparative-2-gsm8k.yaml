@@ -1,13 +1,29 @@
 # Comparative baseline 2: Self-consistency with 3 samples
 run_id: comparative-2-gsm8k
 
+# [VALIDATOR FIX - Attempt 1]
+# [PROBLEM]: Model may not output clean numeric answers consistently
+# [CAUSE]: Prompt could be clearer about output format
+# [FIX]: Strengthened output format instruction
+#
+# [OLD CODE]:
+# method:
+#   type: self_consistency
+#   name: "Self-Consistency"
+#   description: "Sample 3 times, take majority vote"
+#   max_calls: 3
+#   num_samples: 3
+#   prompt: "Think step-by-step internally, then output only the final numeric answer:"
+#   temperature: 0.7  # need temperature > 0 for diversity
+#
+# [NEW CODE]:
 method:
   type: self_consistency
   name: "Self-Consistency"
   description: "Sample 3 times, take majority vote"
   max_calls: 3
   num_samples: 3
-  prompt: "Think step-by-step internally, then output only the final numeric answer:"
+  prompt: "Think step-by-step internally to solve this. Output ONLY a single number as your final answer - no words, units, or labels.\n\nQuestion:"
   temperature: 0.7  # need temperature > 0 for diversity
 
 model:

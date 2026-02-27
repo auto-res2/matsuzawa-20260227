@@ -1,12 +1,26 @@
 # Comparative baseline 1: Standard hidden CoT (single call)
 run_id: comparative-1-gsm8k
 
+# [VALIDATOR FIX - Attempt 1]
+# [PROBLEM]: Model may not output clean numeric answers consistently
+# [CAUSE]: Prompt could be clearer about output format
+# [FIX]: Strengthened output format instruction while keeping CoT instruction
+#
+# [OLD CODE]:
+# method:
+#   type: hidden_cot
+#   name: "Hidden CoT"
+#   description: "Single call with hidden chain-of-thought instruction"
+#   max_calls: 1
+#   prompt: "Think step-by-step internally, then output only the final numeric answer:"
+#
+# [NEW CODE]:
 method:
   type: hidden_cot
   name: "Hidden CoT"
   description: "Single call with hidden chain-of-thought instruction"
   max_calls: 1
-  prompt: "Think step-by-step internally, then output only the final numeric answer:"
+  prompt: "Think step-by-step internally to solve this problem. Then output ONLY a single number as your final answer - no words, explanations, units, or labels.\n\nQuestion:"
 
 model:
   provider: openai
