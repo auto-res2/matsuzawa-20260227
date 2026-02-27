@@ -893,5 +893,132 @@
       "config/run/proposed-gsm8k.yaml": "# Proposed method: SG-DRaME (Stability-Gated Dual-Reasoning with Minimal Edits)\nrun_id: proposed-gsm8k\n\n# [VALIDATOR FIX - Attempt 3]\n# [PROBLEM]: normalize_number extracts first number which may be from reasoning, not final answer\n# [CAUSE]: max_tokens=64 insufficient; prompts don't use delimiter for clean extraction\n# [FIX]: Added ANSWER: delimiter to all prompts and increased max_tokens for reasoning space\n#\n# [OLD CODE]:\n# method:\n#   type: sg_drame\n#   name: \"SG-DRaME\"\n#   description: \"Stability-Gated Dual-Reasoning with Minimal Edits\"\n#   max_calls: 3\n#   derive1_prompt: \"Think step-by-step internally to solve this. Output ONLY a single number as your final answer - no words, units, or labels.\\n\\nQuestion:\"\n#   stability_probe_edit: \"Solve by writing equations first. Output ONLY a single number as your final answer - no words, units, or labels.\\n\\nQuestion:\"\n#   repair_prompt: \"Two solution attempts gave: {answer1} and {answer2}. Check which is correct using constraint validation. Output ONLY the correct number - no words, units, or labels.\\n\\nQuestion:\"\n#\n# [NEW CODE]:\nmethod:\n  type: sg_drame\n  name: \"SG-DRaME\"\n  description: \"Stability-Gated Dual-Reasoning with Minimal Edits\"\n  max_calls: 3\n  derive1_prompt: \"Solve this problem step-by-step. After your reasoning, write 'ANSWER:' followed by only the final numeric answer.\\n\\nQuestion:\"\n  stability_probe_edit: \"Solve by writing equations first. After your reasoning, write 'ANSWER:' followed by only the final numeric answer.\\n\\nQuestion:\"\n  repair_prompt: \"Two solution attempts gave: {answer1} and {answer2}. Check which is correct using constraint validation. Write 'ANSWER:' followed by only the correct final numeric answer.\\n\\nQuestion:\"\n\nmodel:\n  provider: openai\n  model_name: gpt-4o-mini\n  temperature: 0.0\n  max_tokens: 512  # Allow space for reasoning\n\ndataset:\n  name: gsm8k\n  split: test\n  num_samples: 200  # lightweight subset for evaluation\n  shuffle_seed: 42\n\ninference:\n  batch_size: 1  # process one question at a time\n  num_workers: 1\n\n# WandB logging (mode will be overridden by main config in sanity_check)\nwandb:\n  tags: [\"proposed\", \"sg-drame\", \"gsm8k\"]\n",
       "pyproject.toml": "# Please list the required python packages.\n\n[project]\nname = \"matsuzawa-20260227\"\nversion = \"0.1.0\"\ndescription = \"Prompt-only Chain-of-Thought evaluation experiment\"\nrequires-python = \">=3.11\"\ndependencies = [\n    \"hydra-core>=1.3.2\",\n    \"wandb>=0.16.0\",\n    \"datasets>=2.16.0\",\n    \"openai>=1.10.0\",\n    \"anthropic>=0.18.0\",\n    \"pydantic>=2.6.0\",\n    \"numpy>=1.24.0\",\n    \"matplotlib>=3.8.0\",\n    \"scipy>=1.11.0\",\n    \"tqdm>=4.66.0\",\n    \"pyyaml>=6.0\",\n]\n\n[build-system]\nrequires = [\"hatchling\"]\nbuild-backend = \"hatchling.build\"\n\n# [VALIDATOR FIX - Attempt 1]\n# [PROBLEM]: Build fails with \"Unable to determine which files to ship inside the wheel\"\n# [CAUSE]: Missing [tool.hatch.build.targets.wheel] configuration; hatchling cannot auto-detect package\n# [FIX]: Added packages = [\"src\"] to explicitly tell hatchling to include the src/ directory\n#\n# [OLD CODE]:\n# (missing section)\n#\n# [NEW CODE]:\n[tool.hatch.build.targets.wheel]\npackages = [\"src\"]\n"
     }
+  },
+  "experimental_results": {
+    "figures": [
+      "comparison_accuracy.pdf",
+      "comparison_avg_calls.pdf",
+      "comparison_pareto.pdf"
+    ],
+    "metrics_data": {
+      "comparative-0-gsm8k": {
+        "_runtime": 113,
+        "_step": 0,
+        "_timestamp": 1772194498.579785,
+        "_wandb": {
+          "runtime": 113
+        },
+        "accuracy": 0.33,
+        "avg_calls": 1,
+        "correct": 66,
+        "total": 200,
+        "total_calls": 200
+      },
+      "comparative-1-gsm8k": {
+        "_runtime": 1224,
+        "_step": 0,
+        "_timestamp": 1772198128.8140924,
+        "_wandb": {
+          "runtime": 1224
+        },
+        "accuracy": 0.595,
+        "avg_calls": 1,
+        "correct": 119,
+        "total": 200,
+        "total_calls": 200
+      },
+      "comparative-2-gsm8k": {
+        "_runtime": 3997,
+        "_step": 0,
+        "_timestamp": 1772198382.353955,
+        "_wandb": {
+          "runtime": 3997
+        },
+        "accuracy": 0.925,
+        "avg_calls": 3,
+        "correct": 185,
+        "total": 200,
+        "total_calls": 600
+      },
+      "proposed-gsm8k": {
+        "_runtime": 2496,
+        "_step": 0,
+        "_timestamp": 1772196881.6971188,
+        "_wandb": {
+          "runtime": 2496
+        },
+        "accuracy": 0.945,
+        "avg_calls": 2.09,
+        "correct": 189,
+        "total": 200,
+        "total_calls": 418
+      },
+      "comparison": {
+        "primary_metric": "accuracy",
+        "metrics_by_run": {
+          "comparative-0-gsm8k": {
+            "_runtime": 113,
+            "_step": 0,
+            "_timestamp": 1772194498.579785,
+            "_wandb": {
+              "runtime": 113
+            },
+            "accuracy": 0.33,
+            "avg_calls": 1,
+            "correct": 66,
+            "total": 200,
+            "total_calls": 200
+          },
+          "comparative-1-gsm8k": {
+            "_runtime": 1224,
+            "_step": 0,
+            "_timestamp": 1772198128.8140924,
+            "_wandb": {
+              "runtime": 1224
+            },
+            "accuracy": 0.595,
+            "avg_calls": 1,
+            "correct": 119,
+            "total": 200,
+            "total_calls": 200
+          },
+          "comparative-2-gsm8k": {
+            "_runtime": 3997,
+            "_step": 0,
+            "_timestamp": 1772198382.353955,
+            "_wandb": {
+              "runtime": 3997
+            },
+            "accuracy": 0.925,
+            "avg_calls": 3,
+            "correct": 185,
+            "total": 200,
+            "total_calls": 600
+          },
+          "proposed-gsm8k": {
+            "_runtime": 2496,
+            "_step": 0,
+            "_timestamp": 1772196881.6971188,
+            "_wandb": {
+              "runtime": 2496
+            },
+            "accuracy": 0.945,
+            "avg_calls": 2.09,
+            "correct": 189,
+            "total": 200,
+            "total_calls": 418
+          }
+        },
+        "best_proposed": {
+          "run_id": "proposed-gsm8k",
+          "accuracy": 0.945
+        },
+        "best_baseline": {
+          "run_id": "comparative-2-gsm8k",
+          "accuracy": 0.925
+        },
+        "gap": 0.019999999999999907
+      }
+    }
   }
 }
