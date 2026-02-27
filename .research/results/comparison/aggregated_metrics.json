@@ -1,0 +1,66 @@
+{
+  "primary_metric": "accuracy",
+  "metrics_by_run": {
+    "comparative-0-gsm8k": {
+      "_runtime": 113,
+      "_step": 0,
+      "_timestamp": 1772194498.579785,
+      "_wandb": {
+        "runtime": 113
+      },
+      "accuracy": 0.33,
+      "avg_calls": 1,
+      "correct": 66,
+      "total": 200,
+      "total_calls": 200
+    },
+    "comparative-1-gsm8k": {
+      "_runtime": 1224,
+      "_step": 0,
+      "_timestamp": 1772198128.8140924,
+      "_wandb": {
+        "runtime": 1224
+      },
+      "accuracy": 0.595,
+      "avg_calls": 1,
+      "correct": 119,
+      "total": 200,
+      "total_calls": 200
+    },
+    "comparative-2-gsm8k": {
+      "_runtime": 3997,
+      "_step": 0,
+      "_timestamp": 1772198382.353955,
+      "_wandb": {
+        "runtime": 3997
+      },
+      "accuracy": 0.925,
+      "avg_calls": 3,
+      "correct": 185,
+      "total": 200,
+      "total_calls": 600
+    },
+    "proposed-gsm8k": {
+      "_runtime": 2496,
+      "_step": 0,
+      "_timestamp": 1772196881.6971188,
+      "_wandb": {
+        "runtime": 2496
+      },
+      "accuracy": 0.945,
+      "avg_calls": 2.09,
+      "correct": 189,
+      "total": 200,
+      "total_calls": 418
+    }
+  },
+  "best_proposed": {
+    "run_id": "proposed-gsm8k",
+    "accuracy": 0.945
+  },
+  "best_baseline": {
+    "run_id": "comparative-2-gsm8k",
+    "accuracy": 0.925
+  },
+  "gap": 0.019999999999999907
+}

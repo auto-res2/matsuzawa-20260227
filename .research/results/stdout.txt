@@ -1,0 +1,42 @@
+=== [VISUALIZATION] Start at Fri Feb 27 13:56:41 UTC 2026 ===
+Evaluating 4 runs:
+  - comparative-0-gsm8k
+  - comparative-1-gsm8k
+  - comparative-2-gsm8k
+  - proposed-gsm8k
+
+Fetching data from WandB (airas/2026-0227-matsuzawa)...
+Fetching: comparative-0-gsm8k
+  ✓ Found run: https://wandb.ai/airas/2026-0227-matsuzawa/runs/xou91lto
+Fetching: comparative-1-gsm8k
+  ✓ Found run: https://wandb.ai/airas/2026-0227-matsuzawa/runs/b7t5awst
+Fetching: comparative-2-gsm8k
+  ✓ Found run: https://wandb.ai/airas/2026-0227-matsuzawa/runs/mub2xhx7
+Fetching: proposed-gsm8k
+  ✓ Found run: https://wandb.ai/airas/2026-0227-matsuzawa/runs/i8ubiuny
+
+Exporting per-run metrics...
+Saved: .research/results/comparative-0-gsm8k/metrics.json
+Saved: .research/results/comparative-1-gsm8k/metrics.json
+Saved: .research/results/comparative-2-gsm8k/metrics.json
+Saved: .research/results/proposed-gsm8k/metrics.json
+
+Aggregating metrics...
+Performance gap: +0.0200
+Saved: .research/results/comparison/aggregated_metrics.json
+
+Generating comparison plots...
+Generated: .research/results/comparison/comparison_accuracy.pdf
+Generated: .research/results/comparison/comparison_avg_calls.pdf
+Generated: .research/results/comparison/comparison_pareto.pdf
+
+================================================================================
+Evaluation complete!
+================================================================================
+
+Generated files:
+  - .research/results/comparison/aggregated_metrics.json
+  - .research/results/comparison/comparison_accuracy.pdf
+  - .research/results/comparison/comparison_avg_calls.pdf
+  - .research/results/comparison/comparison_pareto.pdf
+=== [VISUALIZATION] PASSED at Fri Feb 27 13:56:53 UTC 2026 ===

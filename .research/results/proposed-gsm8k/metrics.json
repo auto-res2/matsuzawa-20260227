@@ -1,0 +1,13 @@
+{
+  "_runtime": 2496,
+  "_step": 0,
+  "_timestamp": 1772196881.6971188,
+  "_wandb": {
+    "runtime": 2496
+  },
+  "accuracy": 0.945,
+  "avg_calls": 2.09,
+  "correct": 189,
+  "total": 200,
+  "total_calls": 418
+}
