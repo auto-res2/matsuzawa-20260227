@@ -90,7 +90,7 @@ jobs:
             exit 1
           fi
 
-          PROMPT_FILE="/tmp/diagram_generator_prompt.txt"
+          PROMPT_FILE="${GITHUB_WORKSPACE}/.diagram_generator_prompt.tmp"
           {
             cat "$PROMPT_PATH"
             echo ""
@@ -127,6 +127,10 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Clean up temporary prompt file
+        if: always()
+        run: rm -f "${{ steps.build-prompt.outputs.prompt_file }}"
 
       - name: Convert images to PDF
         run: |
