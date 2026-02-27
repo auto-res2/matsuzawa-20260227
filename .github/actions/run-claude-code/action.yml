@@ -49,16 +49,29 @@ runs:
 
         # Build MCP config flags (default + workflow-specific)
         MCP_FLAG=""
+        MCP_TOOLS=""
         DEFAULT_MCP=".github/mcp-config.json"
+        MCP_FILES=()
         if [ -f "$DEFAULT_MCP" ]; then
           MCP_FLAG="--mcp-config $DEFAULT_MCP"
+          MCP_FILES+=("$DEFAULT_MCP")
           echo "Default MCP config found: $DEFAULT_MCP"
         fi
         if [ -n "${{ inputs.mcp_config }}" ]; then
           MCP_FLAG="$MCP_FLAG --mcp-config ${{ inputs.mcp_config }}"
+          MCP_FILES+=("${{ inputs.mcp_config }}")
           echo "Additional MCP config: ${{ inputs.mcp_config }}"
         fi
+        # Extract MCP server names and build allowedTools patterns (mcp__servername__*)
+        for f in "${MCP_FILES[@]}"; do
+          SERVERS=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1])); print(' '.join(data.get('mcpServers',{}).keys()))" "$f" 2>/dev/null || true)
+          for s in $SERVERS; do
+            MCP_TOOLS="${MCP_TOOLS},mcp__${s}__*"
+            echo "Added MCP tool pattern: mcp__${s}__*"
+          done
+        done
         echo "CLAUDE_MCP_FLAG=${MCP_FLAG}" >> $GITHUB_ENV
+        echo "CLAUDE_MCP_TOOLS=${MCP_TOOLS}" >> $GITHUB_ENV
 
         if [ -n "${{ inputs.prompt_file }}" ]; then
           if [ ! -f "${{ inputs.prompt_file }}" ]; then
@@ -84,6 +97,6 @@ runs:
         prompt: ${{ env.CLAUDE_PROMPT }}
         allowed_bots: '*'
         show_full_output: true
-        claude_args: "--model=${{ env.CLAUDE_MODEL_NAME }} --max-turns=${{ inputs.max_turns }} --allowed-tools ${{ inputs.allowed_tools }} ${{ env.CLAUDE_MCP_FLAG }}"
+        claude_args: "--model=${{ env.CLAUDE_MODEL_NAME }} --max-turns=${{ inputs.max_turns }} --allowedTools '${{ inputs.allowed_tools }}${{ env.CLAUDE_MCP_TOOLS }}' ${{ env.CLAUDE_MCP_FLAG }}"
       env:
         MCP_TIMEOUT: ${{ inputs.mcp_timeout }}
