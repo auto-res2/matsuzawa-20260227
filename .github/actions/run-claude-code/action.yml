@@ -97,6 +97,6 @@ runs:
         prompt: ${{ env.CLAUDE_PROMPT }}
         allowed_bots: '*'
         show_full_output: true
-        claude_args: "--model=${{ env.CLAUDE_MODEL_NAME }} --max-turns=${{ inputs.max_turns }} --allowedTools '${{ inputs.allowed_tools }}${{ env.CLAUDE_MCP_TOOLS }}' ${{ env.CLAUDE_MCP_FLAG }}"
+        claude_args: "--model=${{ env.CLAUDE_MODEL_NAME }} --max-turns=${{ inputs.max_turns }} --allowedTools ${{ inputs.allowed_tools }}${{ env.CLAUDE_MCP_TOOLS }} ${{ env.CLAUDE_MCP_FLAG }}"
       env:
         MCP_TIMEOUT: ${{ inputs.mcp_timeout }}
