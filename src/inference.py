@@ -37,6 +37,11 @@ class ZeroShotDirect(InferenceMethod):
     """Zero-shot direct answer (single call)."""
 
     def run(self, question: str) -> Dict[str, Any]:
+        # [VALIDATOR FIX - Attempt 1]
+        # [PROBLEM]: Config structure mismatch - method config is now passed as config.run
+        # [CAUSE]: get_method now receives config.run instead of config
+        # [FIX]: self.config already points to the run config, so no changes needed here
+        # (The fix was in run_inference where we pass config.run to get_method)
         prompt = f"{self.config.method.prompt}\n\n{question}"
         answer = self.model.generate(prompt)
         return {"answer": answer, "num_calls": 1}
@@ -132,28 +137,62 @@ def run_inference(config: DictConfig) -> None:
     Args:
         config: Hydra configuration
     """
+    # [VALIDATOR FIX - Attempt 1]
+    # [PROBLEM]: ConfigAttributeError: Key 'dataset' is not in struct (and similar for model, method)
+    # [CAUSE]: Run-specific configs are loaded under config.run, not config root
+    # [FIX]: Changed config.model to config.run.model, config.dataset to config.run.dataset, config.method to config.run.method
+    #
+    # [OLD CODE]:
+    # print(f"Initializing model: {config.model.provider}/{config.model.model_name}")
+    # model = LLMWrapper(
+    #     provider=config.model.provider,
+    #     model_name=config.model.model_name,
+    #     temperature=config.model.temperature,
+    #     max_tokens=config.model.max_tokens,
+    # )
+    #
+    # [NEW CODE]:
     # Initialize model
-    print(f"Initializing model: {config.model.provider}/{config.model.model_name}")
+    print(
+        f"Initializing model: {config.run.model.provider}/{config.run.model.model_name}"
+    )
     model = LLMWrapper(
-        provider=config.model.provider,
-        model_name=config.model.model_name,
-        temperature=config.model.temperature,
-        max_tokens=config.model.max_tokens,
+        provider=config.run.model.provider,
+        model_name=config.run.model.model_name,
+        temperature=config.run.model.temperature,
+        max_tokens=config.run.model.max_tokens,
     )
 
+    # [VALIDATOR FIX - Attempt 1]
+    # [OLD CODE]:
+    # print(f"Loading dataset: {config.dataset.name}")
+    # dataset = load_gsm8k_dataset(
+    #     split=config.dataset.split,
+    #     num_samples=config.dataset.num_samples,
+    #     shuffle_seed=config.dataset.shuffle_seed,
+    #     cache_dir=config.cache_dir,
+    # )
+    #
+    # [NEW CODE]:
     # Load dataset
-    print(f"Loading dataset: {config.dataset.name}")
+    print(f"Loading dataset: {config.run.dataset.name}")
     dataset = load_gsm8k_dataset(
-        split=config.dataset.split,
-        num_samples=config.dataset.num_samples,
-        shuffle_seed=config.dataset.shuffle_seed,
+        split=config.run.dataset.split,
+        num_samples=config.run.dataset.num_samples,
+        shuffle_seed=config.run.dataset.shuffle_seed,
         cache_dir=config.cache_dir,
     )
     print(f"Loaded {len(dataset)} samples")
 
+    # [VALIDATOR FIX - Attempt 1]
+    # [OLD CODE]:
+    # method = get_method(config, model)
+    # print(f"Using method: {config.method.type}")
+    #
+    # [NEW CODE]:
     # Get inference method
-    method = get_method(config, model)
-    print(f"Using method: {config.method.type}")
+    method = get_method(config.run, model)
+    print(f"Using method: {config.run.method.type}")
 
     # Initialize WandB
     wandb_enabled = config.wandb.mode != "disabled"

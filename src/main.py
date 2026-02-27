@@ -27,11 +27,24 @@ def main(cfg: DictConfig) -> None:
     if cfg.mode == "sanity_check":
         print("\nApplying sanity_check mode overrides:")
 
+        # [VALIDATOR FIX - Attempt 1]
+        # [PROBLEM]: ConfigAttributeError: Key 'dataset' is not in struct
+        # [CAUSE]: Run-specific configs (comparative-0-gsm8k.yaml) are loaded under cfg.run, not cfg root
+        # [FIX]: Changed cfg.dataset to cfg.run.dataset and cfg.wandb to cfg.wandb (already at root level)
+        #
+        # [OLD CODE]:
+        # original_samples = cfg.dataset.num_samples
+        # cfg.dataset.num_samples = min(10, original_samples)
+        # print(
+        #     f"  - dataset.num_samples: {original_samples} -> {cfg.dataset.num_samples}"
+        # )
+        #
+        # [NEW CODE]:
         # Reduce dataset size for sanity check
-        original_samples = cfg.dataset.num_samples
-        cfg.dataset.num_samples = min(10, original_samples)
+        original_samples = cfg.run.dataset.num_samples
+        cfg.run.dataset.num_samples = min(10, original_samples)
         print(
-            f"  - dataset.num_samples: {original_samples} -> {cfg.dataset.num_samples}"
+            f"  - dataset.num_samples: {original_samples} -> {cfg.run.dataset.num_samples}"
         )
 
         # Keep wandb online for sanity checks
