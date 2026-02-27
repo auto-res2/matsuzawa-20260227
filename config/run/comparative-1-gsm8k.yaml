@@ -1,10 +1,10 @@
 # Comparative baseline 1: Standard hidden CoT (single call)
 run_id: comparative-1-gsm8k
 
-# [VALIDATOR FIX - Attempt 3]
-# [PROBLEM]: Model produces incorrect answers (0% accuracy)
-# [CAUSE]: normalize_number extracts first number in text; with reasoning, it extracts wrong number
-# [FIX]: Structured prompt with delimiter so extraction finds the final answer, not reasoning numbers
+# [VALIDATOR FIX - Attempt 4]
+# [PROBLEM]: 93% accuracy (14/200 wrong) due to model outputting full reasoning text instead of just numbers
+# [CAUSE]: Prompt says "Solve this problem step-by-step" which encourages visible reasoning; max_tokens=512 allows it; normalize_number then extracts first number from "1. Calculate..." instead of final answer; ANSWER: delimiter not reliably output by model
+# [FIX]: Stronger prompt to force number-only output without encouraging step-by-step explanation; lower max_tokens to prevent lengthy reasoning
 #
 # [OLD CODE]:
 # method:
@@ -12,7 +12,7 @@ run_id: comparative-1-gsm8k
 #   name: "Hidden CoT"
 #   description: "Single call with hidden chain-of-thought instruction"
 #   max_calls: 1
-#   prompt: "Answer with ONLY a number. No words, explanations, or units - just the number."
+#   prompt: "Solve this problem step-by-step. After your reasoning, write 'ANSWER:' followed by only the final numeric answer.\n\nQuestion:"
 #
 # [NEW CODE]:
 method:
@@ -20,26 +20,26 @@ method:
   name: "Hidden CoT"
   description: "Single call with hidden chain-of-thought instruction"
   max_calls: 1
-  prompt: "Solve this problem step-by-step. After your reasoning, write 'ANSWER:' followed by only the final numeric answer.\n\nQuestion:"
+  prompt: "Solve the following problem and output ONLY the final numeric answer. Do not include any words, explanations, steps, or units. Output ONLY the number.\n\nQuestion:"
 
-# [VALIDATOR FIX - Attempt 3]
-# [PROBLEM]: max_tokens=10 is too restrictive and may truncate reasoning or answers
-# [CAUSE]: With hidden CoT, model needs space to think internally even if output is just a number
-# [FIX]: Increased max_tokens to 512 to allow internal reasoning space
+# [VALIDATOR FIX - Attempt 4]
+# [PROBLEM]: max_tokens=512 allows model to output full step-by-step reasoning
+# [CAUSE]: High token limit doesn't constrain output format; model ignores "output only number" instruction when given space
+# [FIX]: Reduced max_tokens to 20 to force number-only output (enough for any GSM8K answer but not enough for reasoning)
 #
 # [OLD CODE]:
 # model:
 #   provider: openai
 #   model_name: gpt-4o-mini
 #   temperature: 0.0
-#   max_tokens: 10  # Very low to force number-only output
+#   max_tokens: 512  # Allow space for internal reasoning while still expecting numeric output
 #
 # [NEW CODE]:
 model:
   provider: openai
   model_name: gpt-4o-mini
   temperature: 0.0
-  max_tokens: 512  # Allow space for internal reasoning while still expecting numeric output
+  max_tokens: 20  # Constrain to number-only output (GSM8K answers are short numbers)
 
 dataset:
   name: gsm8k

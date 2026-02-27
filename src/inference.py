@@ -71,27 +71,23 @@ class HiddenCoT(InferenceMethod):
     """Hidden chain-of-thought (single call)."""
 
     def run(self, question: str) -> Dict[str, Any]:
-        # [VALIDATOR FIX - Attempt 3]
-        # [PROBLEM]: normalize_number extracts first number in response, which may be from reasoning steps
-        # [CAUSE]: Model outputs "1. Step one: 7+11=18\n2. ..." and normalize_number extracts "1" instead of final answer
-        # [FIX]: Extract text after "ANSWER:" delimiter if present, otherwise use full response
+        # [VALIDATOR FIX - Attempt 4]
+        # [PROBLEM]: Previous fix used ANSWER: delimiter but model doesn't reliably output it
+        # [CAUSE]: Config changed to force number-only output without ANSWER: delimiter
+        # [FIX]: Simplified to just use model output directly (should be just a number now)
         #
         # [OLD CODE]:
         # prompt = f"{self.config.method.prompt}\n\n{question}"
-        # answer = self.model.generate(prompt)
+        # response = self.model.generate(prompt)
+        # if "ANSWER:" in response:
+        #     answer = response.split("ANSWER:")[-1].strip()
+        # else:
+        #     answer = response
         # return {"answer": answer, "num_calls": 1}
         #
         # [NEW CODE]:
         prompt = f"{self.config.method.prompt}\n\n{question}"
-        response = self.model.generate(prompt)
-
-        # Extract final answer after delimiter
-        if "ANSWER:" in response:
-            answer = response.split("ANSWER:")[-1].strip()
-        else:
-            # Fallback: use full response (normalize_number will extract first number)
-            answer = response
-
+        answer = self.model.generate(prompt)
         return {"answer": answer, "num_calls": 1}
 
 
